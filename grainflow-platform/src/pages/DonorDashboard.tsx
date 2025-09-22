@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,22 +6,52 @@ import { Heart, Award, User, Plus } from "lucide-react";
 import { NewDonation } from "@/components/dashboard/NewDonation";
 import { ProfileUpdate } from "@/components/dashboard/ProfileUpdate";
 
+interface Donation {
+  _id: string;
+  food_type: string;
+  quantity: number;
+  safe_till?: string;
+  createdAt: string;
+}
+
 const DonorDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
-  const username = localStorage.getItem('username') || 'Donor';
-  const fullName = localStorage.getItem('fullName') || 'Anonymous Donor';
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reload, setReload] = useState(false);
 
-  // Mock data - in real app, this would come from API
+  const fullName = localStorage.getItem("fullName") || "Anonymous Donor";
+
+  useEffect(() => {
+    const fetchDonations = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/food/list");
+        const data = await res.json();
+        setDonations(data);
+      } catch (err) {
+        console.error("Failed to fetch donations", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDonations();
+  }, [reload]);
+
+  const handleDonationAdded = () => {
+    setReload(!reload); // trigger refetch
+    setActiveTab("overview");
+  };
+
   const stats = {
     points: 1250,
     ngosHelped: 8,
-    kgsDonated: 45.5
+    kgsDonated: donations.reduce((sum, d) => sum + (d.quantity || 0), 0),
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case "newDonation":
-        return <NewDonation onBack={() => setActiveTab("overview")} />;
+        return <NewDonation onBack={handleDonationAdded} />;
       case "profile":
         return <ProfileUpdate onBack={() => setActiveTab("overview")} />;
       default:
@@ -61,25 +91,33 @@ const DonorDashboard = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
+                  <CardTitle>Recent Donations</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div>
-                        <p className="font-medium">Rice donated to Hope NGO</p>
-                        <p className="text-sm text-muted-foreground">2 hours ago • 5kg</p>
-                      </div>
-                      <Badge>+50 points</Badge>
+                  {loading ? (
+                    <p>Loading...</p>
+                  ) : donations.length === 0 ? (
+                    <p>No donations yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {donations.map((d) => (
+                        <div key={d._id} className="p-3 bg-muted rounded-lg">
+                          <p className="font-medium">{d.food_type}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Quantity: {d.quantity}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Added on {new Date(d.createdAt).toLocaleString()}
+                          </p>
+                          {d.safe_till && (
+                            <p className="text-sm text-green-600">
+                              Safe till {new Date(d.safe_till).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div>
-                        <p className="font-medium">Vegetables donated to Care Foundation</p>
-                        <p className="text-sm text-muted-foreground">1 day ago • 3kg</p>
-                      </div>
-                      <Badge>+30 points</Badge>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -97,7 +135,7 @@ const DonorDashboard = () => {
                     <div className="text-3xl font-bold text-primary">{stats.points}</div>
                     <div className="text-sm text-muted-foreground">Points Earned</div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-3 bg-accent/10 rounded-lg">
                       <div className="flex items-center justify-center gap-1 mb-1">
@@ -106,7 +144,7 @@ const DonorDashboard = () => {
                       </div>
                       <div className="text-xs text-muted-foreground">NGOs Helped</div>
                     </div>
-                    
+
                     <div className="text-center p-3 bg-secondary/10 rounded-lg">
                       <div className="text-2xl font-bold">{stats.kgsDonated}</div>
                       <div className="text-xs text-muted-foreground">KGs Donated</div>
@@ -128,7 +166,7 @@ const DonorDashboard = () => {
                       💚 10 Donations Made
                     </Badge>
                     <Badge variant="outline" className="w-full justify-center py-2">
-                      🏆 50 KG Milestone (45.5/50)
+                      🏆 50 KG Milestone ({stats.kgsDonated}/50)
                     </Badge>
                   </div>
                 </CardContent>
@@ -146,7 +184,7 @@ const DonorDashboard = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Donor Dashboard</h1>
           <p className="text-muted-foreground">Manage your donations and track your impact</p>
         </div>
-        
+
         {renderContent()}
       </div>
     </div>
