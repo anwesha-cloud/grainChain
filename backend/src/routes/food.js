@@ -1,6 +1,6 @@
 const express = require('express');
 const Food = require('../models/food');
-const { authMiddleware } = require('../utils/auth'); // we’ll add auth util soon
+const { authMiddleware } = require('../utils/auth');
 const axios = require('axios');
 
 const router = express.Router();
@@ -50,22 +50,34 @@ router.post('/add', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/food/list
+// GET /api/food/list (all foods, e.g. for NGO)
 router.get('/list', async (req, res) => {
   try {
     const { status } = req.query;
     const query = status ? { status } : {};
-    const foods = await Food.find(query).populate('donor', 'name email').sort({ upload_time: -1 });
+    const foods = await Food.find(query).populate('donor', 'name email').sort({ createdAt: -1 });
     res.json(foods);
   } catch (err) {
     console.error('GET /food/list error:', err);
     res.status(500).json({ error: 'internal server error' });
   }
 });
+
+// GET /api/food/my (foods created by logged-in donor)
+router.get('/my', authMiddleware, async (req, res) => {
+  try {
+    const foods = await Food.find({ donor: req.user.id })
+      .sort({ createdAt: -1 });
+    res.json(foods);
+  } catch (err) {
+    console.error('GET /food/my error:', err);
+    res.status(500).json({ error: 'internal server error' });
+  }
+});
+
 // PUT /api/food/accept/:id
 router.put('/accept/:id', authMiddleware, async (req, res) => {
   try {
-    // only NGOs (or admin) should accept
     if (req.user.role !== 'ngo' && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Only NGOs can accept donations' });
     }

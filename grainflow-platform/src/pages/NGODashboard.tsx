@@ -20,7 +20,7 @@ const ngo = {
 const NGODashboard = () => {
   const fullName = localStorage.getItem("fullName") || "Anonymous NGO";
 
-  // Mock donation requests - in real app, this would come from API
+  // Mock donation requests - replace with API fetch later
   const donationRequests = [
     {
       id: 1,
@@ -75,6 +75,7 @@ const NGODashboard = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
             NGO Dashboard
@@ -181,7 +182,7 @@ const NGODashboard = () => {
                     </div>
                   </div>
 
-                  {/* ✅ MAP HERE */}
+                  {/* ✅ Map Integration */}
                   <DonationMap
                     donor={{
                       lat: food.donorLat,
@@ -211,4 +212,3 @@ const NGODashboard = () => {
 };
 
 export default NGODashboard;
-

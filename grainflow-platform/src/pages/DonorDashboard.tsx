@@ -6,58 +6,49 @@ import { Heart, Award, User, Plus } from "lucide-react";
 import { NewDonation } from "@/components/dashboard/NewDonation";
 import { ProfileUpdate } from "@/components/dashboard/ProfileUpdate";
 
-interface Donation {
-  _id: string;
-  food_type: string;
-  quantity: number;
-  safe_till?: string;
-  createdAt: string;
-}
-
 const DonorDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
-  const [donations, setDonations] = useState<Donation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [reload, setReload] = useState(false);
-
   const fullName = localStorage.getItem("fullName") || "Anonymous Donor";
 
+  const [donations, setDonations] = useState<any[]>([]);
+
+  // Fetch only this donor’s donations
   useEffect(() => {
     const fetchDonations = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/food/list");
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:5000/api/food/my", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         const data = await res.json();
         setDonations(data);
       } catch (err) {
-        console.error("Failed to fetch donations", err);
-      } finally {
-        setLoading(false);
+        console.error("Error fetching donations:", err);
       }
     };
     fetchDonations();
-  }, [reload]);
+  }, []);
 
-  const handleDonationAdded = () => {
-    setReload(!reload); // trigger refetch
-    setActiveTab("overview");
-  };
-
+  // Mock impact stats (can compute later from donations)
   const stats = {
     points: 1250,
     ngosHelped: 8,
-    kgsDonated: donations.reduce((sum, d) => sum + (d.quantity || 0), 0),
+    kgsDonated: 45.5,
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case "newDonation":
-        return <NewDonation onBack={handleDonationAdded} />;
+        return <NewDonation onBack={() => setActiveTab("overview")} />;
       case "profile":
         return <ProfileUpdate onBack={() => setActiveTab("overview")} />;
       default:
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
+              {/* Welcome Card */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -89,39 +80,41 @@ const DonorDashboard = () => {
                 </CardContent>
               </Card>
 
+              {/* Recent Donations */}
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Donations</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {loading ? (
-                    <p>Loading...</p>
-                  ) : donations.length === 0 ? (
-                    <p>No donations yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {donations.map((d) => (
-                        <div key={d._id} className="p-3 bg-muted rounded-lg">
-                          <p className="font-medium">{d.food_type}</p>
+                  <div className="space-y-3">
+                    {donations.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No donations yet.</p>
+                    )}
+                    {donations.map((donation) => (
+                      <div
+                        key={donation._id}
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium">{donation.food_type}</p>
                           <p className="text-sm text-muted-foreground">
-                            Quantity: {d.quantity}
+                            Added on {new Date(donation.createdAt).toLocaleString()}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            Added on {new Date(d.createdAt).toLocaleString()}
-                          </p>
-                          {d.safe_till && (
+                          {donation.safe_till && (
                             <p className="text-sm text-green-600">
-                              Safe till {new Date(d.safe_till).toLocaleString()}
+                              Safe till {new Date(donation.safe_till).toLocaleString()}
                             </p>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <Badge>+{donation.quantity} qty</Badge>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
+            {/* Stats + Achievements */}
             <div className="space-y-6">
               <Card>
                 <CardHeader>
@@ -166,7 +159,7 @@ const DonorDashboard = () => {
                       💚 10 Donations Made
                     </Badge>
                     <Badge variant="outline" className="w-full justify-center py-2">
-                      🏆 50 KG Milestone ({stats.kgsDonated}/50)
+                      🏆 50 KG Milestone (45.5/50)
                     </Badge>
                   </div>
                 </CardContent>
